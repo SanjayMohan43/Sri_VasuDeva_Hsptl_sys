@@ -1,15 +1,15 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-let supabase: any = null;
+let supabase: SupabaseClient | null = null;
 
 if (supabaseUrl && supabaseAnonKey) {
   supabase = createClient(supabaseUrl, supabaseAnonKey);
 } else {
-  // Create a mock client for development without Supabase configured
-  console.warn('Supabase environment variables not configured. Using fallback client.');
+  console.warn('Supabase environment variables not configured');
+  // Create a minimal mock client for development
   supabase = {
     from: () => ({
       select: () => ({
@@ -24,7 +24,7 @@ if (supabaseUrl && supabaseAnonKey) {
       insert: () => Promise.resolve({ data: null, error: null }),
       upsert: () => Promise.resolve({ data: null, error: null })
     })
-  };
+  } as unknown as SupabaseClient;
 }
 
 export { supabase };
