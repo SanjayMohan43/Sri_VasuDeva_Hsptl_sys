@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { HospitalProvider } from "@/contexts/HospitalContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
@@ -19,6 +20,7 @@ import ReportsPage from "@/pages/ReportsPage";
 import ManageDoctorsPage from "@/pages/ManageDoctorsPage";
 import ManagePatientsPage from "@/pages/ManagePatientsPage";
 import SchedulePage from "@/pages/SchedulePage";
+import BillsPage from "@/pages/BillsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +53,7 @@ const AppRoutes = () => (
     <Route path="/manage-doctors" element={<ProtectedRoute><ManageDoctorsPage /></ProtectedRoute>} />
     <Route path="/manage-patients" element={<ProtectedRoute><ManagePatientsPage /></ProtectedRoute>} />
     <Route path="/schedule" element={<ProtectedRoute><SchedulePage /></ProtectedRoute>} />
+    <Route path="/bills" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
@@ -63,7 +66,9 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <HospitalProvider>
-            <AppRoutes />
+            <NotificationProvider>
+              <AppRoutes />
+            </NotificationProvider>
           </HospitalProvider>
         </AuthProvider>
       </BrowserRouter>

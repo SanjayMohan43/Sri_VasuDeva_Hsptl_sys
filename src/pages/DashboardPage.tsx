@@ -1,11 +1,28 @@
 import { useAuth } from "@/contexts/AuthContext";
 import StatsCard from "@/components/StatsCard";
-import { Calendar, Users, Pill, ClipboardList, Stethoscope, Package, TruckIcon, Video, Loader2 } from "lucide-react";
+import { Calendar, Users, Pill, ClipboardList, Stethoscope, Package, TruckIcon, Video, Loader2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useAppQuery } from "@/hooks/useAppQuery";
 import { Appointment, Medicine, MedicineRequest, DeliveryOrder } from "@/data/mockData";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
+
+const getEffectiveStatus = (apt: Appointment): string => {
+  if (apt.status !== "scheduled") return apt.status;
+  const aptDateTime = new Date(`${apt.date}T${apt.time}:00`);
+  return aptDateTime < new Date() ? "missed" : "upcoming";
+};
+
+const statusBadgeClass = (s: string) => {
+  if (s === "visited" || s === "completed") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (s === "in-progress") return "bg-blue-50 text-blue-700 border-blue-200";
+  if (s === "missed") return "bg-orange-50 text-orange-700 border-orange-200";
+  if (s === "cancelled") return "bg-red-50 text-red-700 border-red-200";
+  return "";
+};
 
 const fadeIn = {
   initial: { opacity: 0, y: 12 },
@@ -64,20 +81,23 @@ const AdminDashboard = ({ appointments, medicines, requests, deliveryOrders, doc
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {appointments.slice(0, 5).map(apt => (
-                    <tr key={apt.id} className="group hover:bg-secondary/30 transition-colors">
-                      <td className="py-3 font-medium text-foreground">{apt.patientName}</td>
-                      <td className="py-3 text-muted-foreground">{apt.doctorName}</td>
-                      <td className="py-3 text-muted-foreground text-xs leading-tight">
-                        {apt.date}<br/>{apt.time}
-                      </td>
-                      <td className="py-3 text-right">
-                        <Badge variant={apt.status === "in-progress" ? "default" : "secondary"} className="text-[10px] h-5">
-                          {apt.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
+                  {appointments.slice(0, 5).map(apt => {
+                    const eff = getEffectiveStatus(apt);
+                    return (
+                      <tr key={apt.id} className="group hover:bg-secondary/30 transition-colors">
+                        <td className="py-3 font-medium text-foreground">{apt.patientName}</td>
+                        <td className="py-3 text-muted-foreground">{apt.doctorName}</td>
+                        <td className="py-3 text-muted-foreground text-xs leading-tight">
+                          {apt.date}<br/>{apt.time}
+                        </td>
+                        <td className="py-3 text-right">
+                          <Badge variant="outline" className={`text-[10px] h-5 border capitalize ${statusBadgeClass(eff)}`}>
+                            {eff}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -149,18 +169,24 @@ const PatientDashboard = ({ appointments, requests, deliveryOrders, user }: { ap
         <Card className="shadow-card border-0">
           <CardHeader><CardTitle className="text-lg">My Appointments</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {myAppointments.map(apt => (
-              <div key={apt.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                <div>
-                  <p className="font-medium text-sm text-foreground">{apt.doctorName}</p>
-                  <p className="text-xs text-muted-foreground">{apt.date} · {apt.time}</p>
+            {myAppointments.map(apt => {
+              const eff = getEffectiveStatus(apt);
+              return (
+                <div key={apt.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                  <div>
+                    <p className="font-medium text-sm text-foreground">{apt.doctorName}</p>
+                    <p className="text-xs text-muted-foreground">{apt.date} · {apt.time}</p>
+                  </div>
+                  <div className="flex gap-2 items-center flex-wrap justify-end">
+                    {apt.type === "telemedicine" && <Badge variant="outline">Virtual</Badge>}
+                    {apt.queueNumber && eff === "upcoming" && <Badge>Q#{apt.queueNumber}</Badge>}
+                    <Badge variant="outline" className={`text-[10px] capitalize border ${statusBadgeClass(eff)}`}>
+                      {eff}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  {apt.type === "telemedicine" && <Badge variant="outline">Virtual</Badge>}
-                  {apt.queueNumber && <Badge>Q#{apt.queueNumber}</Badge>}
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {myAppointments.length === 0 && <p className="text-sm text-muted-foreground">No upcoming appointments</p>}
           </CardContent>
         </Card>

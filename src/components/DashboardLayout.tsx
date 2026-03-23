@@ -1,14 +1,17 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth, UserRole } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Calendar, Users, Pill, ShoppingCart,
   Stethoscope, FileText, Video, ClipboardList, LogOut, Menu, X,
-  Package, Settings, Bell, TruckIcon, Store, AlertCircle, Clock
+  Package, Settings, Bell, TruckIcon, Store, AlertCircle, Clock,
+  CheckCheck, CalendarCheck, Truck, Beaker, Receipt
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useHospital } from "@/contexts/HospitalContext";
 
 interface NavItem {
@@ -30,15 +33,37 @@ const navItems: NavItem[] = [
   { label: "Medicine Delivery", href: "/delivery", icon: <TruckIcon className="h-5 w-5" />, roles: ["admin", "patient"] },
   { label: "Medicine Requests", href: "/medicine-requests", icon: <Package className="h-5 w-5" />, roles: ["admin", "patient"] },
   { label: "Store Settings", href: "/store-settings", icon: <Store className="h-5 w-5" />, roles: ["admin"] },
+  { label: "My Bills & Receipts", href: "/bills", icon: <Receipt className="h-5 w-5" />, roles: ["admin", "patient"] },
   { label: "My Schedule", href: "/schedule", icon: <Calendar className="h-5 w-5" />, roles: ["doctor"] },
 ];
+
+const notifIcon = (type: string) => {
+  if (type === "appointment") return <CalendarCheck className="h-4 w-4 text-blue-500" />;
+  if (type === "medicine") return <Beaker className="h-4 w-4 text-emerald-500" />;
+  if (type === "delivery") return <Truck className="h-4 w-4 text-amber-500" />;
+  return <Bell className="h-4 w-4 text-muted-foreground" />;
+};
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const { user, logout } = useAuth();
   const { isOpen, isClosingSoon } = useHospital();
+  const { notifications, unreadCount, markAllRead, markRead } = useNotifications();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  // Close notification panel if clicked outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    };
+    if (notifOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [notifOpen]);
 
   if (!user) return null;
 
@@ -131,9 +156,86 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
           </button>
           <div className="flex-1" />
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
+            {/* Notification Bell */}
+            <div className="relative" ref={notifRef}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative"
+                onClick={() => { setNotifOpen(v => !v); }}
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-[10px] font-bold text-white flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </Button>
+
+              {notifOpen && (
+                <div className="absolute right-0 top-12 w-80 max-h-[420px] bg-card border border-border rounded-xl shadow-2xl z-50 flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                    <span className="font-semibold text-sm text-foreground">Notifications</span>
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllRead}
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          <CheckCheck className="h-3 w-3" /> Mark all read
+                        </button>
+                      )}
+                      <button onClick={() => setNotifOpen(false)} className="text-muted-foreground hover:text-foreground">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-y-auto flex-1">
+                    {notifications.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                        <Bell className="h-8 w-8 text-muted-foreground mb-2 opacity-40" />
+                        <p className="text-sm text-muted-foreground">No notifications yet</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Real-time updates will appear here</p>
+                      </div>
+                    ) : (
+                      notifications.map(n => (
+                        <button
+                          key={n.id}
+                          onClick={() => markRead(n.id)}
+                          className={cn(
+                            "w-full text-left px-4 py-3 flex gap-3 hover:bg-secondary/50 transition-colors border-b border-border/50 last:border-0",
+                            !n.read && "bg-primary/5"
+                          )}
+                        >
+                          <div className="mt-0.5 shrink-0">{notifIcon(n.type)}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("text-sm font-medium text-foreground leading-tight", !n.read && "font-semibold")}>
+                              {n.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
+                            <p className="text-[10px] text-muted-foreground/60 mt-1">{n.time}</p>
+                          </div>
+                          {!n.read && (
+                            <span className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-muted-foreground hover:text-foreground"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
         </header>

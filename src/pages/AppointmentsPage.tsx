@@ -1,44 +1,92 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, Video, MapPin, Loader2 } from "lucide-react";
+import { Calendar, Clock, Video, MapPin, Loader2, CheckCircle2, XCircle, AlertTriangle, Eye } from "lucide-react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAppQuery } from "@/hooks/useAppQuery";
 import { supabase } from "@/lib/supabase";
+import { Appointment } from "@/data/mockData";
 
 const timeSlots = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "14:00", "14:30", "15:00", "15:30", "16:00"];
+
+/**
+ * Computes the effective display status for an appointment:
+ * - If status is already set by admin (visited, missed, cancelled, in-progress, completed) → keep it
+ * - If still "scheduled" but the datetime has passed → auto-display as "missed"
+ * - Otherwise → "upcoming"
+ */
+const getEffectiveStatus = (apt: Appointment): Appointment["status"] | "upcoming" => {
+  if (apt.status !== "scheduled") return apt.status;
+  const aptDateTime = new Date(`${apt.date}T${apt.time}:00`);
+  return aptDateTime < new Date() ? "missed" : "upcoming";
+};
+
+const statusBadgeVariant = (s: string): "default" | "secondary" | "destructive" | "outline" => {
+  if (s === "in-progress" || s === "visited" || s === "completed") return "default";
+  if (s === "cancelled" || s === "missed") return "destructive";
+  if (s === "upcoming" || s === "scheduled") return "outline";
+  return "secondary";
+};
+
+const statusColor = (s: string) => {
+  if (s === "visited" || s === "completed") return "text-emerald-600 bg-emerald-50 border-emerald-200";
+  if (s === "in-progress") return "text-blue-600 bg-blue-50 border-blue-200";
+  if (s === "missed") return "text-orange-600 bg-orange-50 border-orange-200";
+  if (s === "cancelled") return "text-red-600 bg-red-50 border-red-200";
+  return "text-foreground";
+};
 
 const AppointmentsPage = () => {
   const { user } = useAuth();
   const { appointments, doctors, loading } = useAppQuery();
-  const [localAppointments, setLocalAppointments] = useState(appointments);
+  const [localAppointments, setLocalAppointments] = useState<Appointment[]>([]);
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [selectedType, setSelectedType] = useState<"in-person" | "telemedicine">("in-person");
   const [isBooking, setIsBooking] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Sync local state when Supabase fetch completes
-  if (appointments.length > 0 && localAppointments.length === 0) {
+  // Sync appointments from hook
+  useEffect(() => {
     setLocalAppointments(appointments);
-  }
+  }, [appointments]);
+
+  /** Update a single appointment's status in Supabase and locally */
+  const updateStatus = async (aptId: string, newStatus: Appointment["status"]) => {
+    setActionLoading(aptId + newStatus);
+    const { error } = await supabase
+      .from('appointments')
+      .update({ status: newStatus })
+      .eq('id', aptId);
+
+    setActionLoading(null);
+    if (error) {
+      toast.error("Failed to update appointment status");
+      console.error(error);
+      return;
+    }
+    setLocalAppointments(prev =>
+      prev.map(a => a.id === aptId ? { ...a, status: newStatus } : a)
+    );
+    toast.success(`Appointment marked as ${newStatus}`);
+  };
 
   const handleBook = async () => {
     if (!selectedDoctor || !selectedDate || !selectedTime) {
       toast.error("Please fill all fields");
       return;
     }
-
     if (selectedDate < todayStr) {
       toast.error("Please select a current or future date");
       return;
     }
-    
+
     setIsBooking(true);
     const doctor = doctors.find(d => d.id === selectedDoctor);
     const queueNumber = localAppointments.filter(a => a.doctorId === selectedDoctor && a.date === selectedDate).length + 1;
@@ -65,7 +113,7 @@ const AppointmentsPage = () => {
       return;
     }
 
-    const newApt = {
+    const newApt: Appointment = {
       id: newId,
       patientId: user?.id || "",
       patientName: user?.name || "",
@@ -73,12 +121,12 @@ const AppointmentsPage = () => {
       doctorName: doctor?.name || "",
       date: selectedDate,
       time: selectedTime,
-      status: "scheduled" as const,
+      status: "scheduled",
       type: selectedType,
-      queueNumber: queueNumber,
+      queueNumber,
     };
 
-    setLocalAppointments([...localAppointments, newApt]);
+    setLocalAppointments(prev => [...prev, newApt]);
     toast.success(`Appointment booked! Queue #${newApt.queueNumber}`);
     setSelectedDoctor("");
     setSelectedDate("");
@@ -104,7 +152,8 @@ const AppointmentsPage = () => {
       <h1 className="text-3xl font-bold text-foreground mb-2">Appointments</h1>
       <p className="text-muted-foreground mb-8">Manage and book appointments</p>
 
-      {(user?.role === "patient") && (
+      {/* Patient booking form */}
+      {user?.role === "patient" && (
         <Card className="shadow-card border-0 mb-8">
           <CardHeader><CardTitle>Book New Appointment</CardTitle></CardHeader>
           <CardContent>
@@ -147,41 +196,134 @@ const AppointmentsPage = () => {
       )}
 
       <Card className="shadow-card border-0">
-        <CardHeader><CardTitle>{user?.role === "patient" ? "My Appointments" : "All Appointments"}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{user?.role === "patient" ? "My Appointments" : "All Appointments"}</CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {myAppointments.length === 0 && <p className="text-sm text-muted-foreground">No appointments found</p>}
-            {myAppointments.map(apt => (
-              <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg bg-secondary/50 gap-3">
-                <div className="space-y-1">
-                  <p className="font-semibold text-foreground">{user?.role === "patient" ? apt.doctorName : apt.patientName}</p>
-                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{apt.date}</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{apt.time}</span>
-                    <span className="flex items-center gap-1">
-                      {apt.type === "telemedicine" ? <Video className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}
-                      {apt.type}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex gap-2 items-center">
-                  {apt.queueNumber && <Badge variant="outline">Q#{apt.queueNumber}</Badge>}
-                  <Badge variant={apt.status === "in-progress" ? "default" : apt.status === "completed" ? "secondary" : apt.status === "cancelled" ? "destructive" : "outline"}>
-                    {apt.status}
-                  </Badge>
-                  {apt.type === "telemedicine" && apt.status === "scheduled" && (
-                    <Button size="sm" variant="outline" onClick={() => toast.info("Joining telemedicine session...")}>
-                      <Video className="h-4 w-4 mr-1" /> Join
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
+            {myAppointments.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">No appointments found</p>
+            )}
+            <AnimatePresence>
+              {myAppointments.map(apt => {
+                const effective = getEffectiveStatus(apt);
+                const isLoading = actionLoading?.startsWith(apt.id);
+                const isPast = new Date(`${apt.date}T${apt.time}:00`) < new Date();
+
+                return (
+                  <motion.div
+                    key={apt.id}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-secondary/40 border border-border/50 gap-3 hover:bg-secondary/60 transition-colors"
+                  >
+                    <div className="space-y-1.5">
+                      <p className="font-semibold text-foreground">
+                        {user?.role === "patient" ? apt.doctorName : apt.patientName}
+                      </p>
+                      {user?.role !== "patient" && (
+                        <p className="text-xs text-muted-foreground">Patient: {apt.patientName}</p>
+                      )}
+                      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{apt.date}</span>
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{apt.time}</span>
+                        <span className="flex items-center gap-1">
+                          {apt.type === "telemedicine" ? <Video className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}
+                          {apt.type}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 items-center">
+                      {apt.queueNumber && <Badge variant="outline">Q#{apt.queueNumber}</Badge>}
+
+                      {/* Status Badge */}
+                      <Badge
+                        className={cn(
+                          "text-xs border capitalize",
+                          effective === "visited" || effective === "completed" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300" :
+                          effective === "in-progress" ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300" :
+                          effective === "missed" ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300" :
+                          effective === "cancelled" ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300" :
+                          "bg-secondary text-secondary-foreground border-border"
+                        )}
+                        variant="outline"
+                      >
+                        {effective === "upcoming" ? "Upcoming" : effective.charAt(0).toUpperCase() + effective.slice(1)}
+                      </Badge>
+
+                      {/* Telemedicine join button */}
+                      {apt.type === "telemedicine" && effective === "upcoming" && (
+                        <Button size="sm" variant="outline" onClick={() => toast.info("Joining telemedicine session...")}>
+                          <Video className="h-4 w-4 mr-1" /> Join
+                        </Button>
+                      )}
+
+                      {/* Patient: Cancel button (only for upcoming/scheduled appointments) */}
+                      {user?.role === "patient" && (apt.status === "scheduled") && !isPast && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={isLoading}
+                          onClick={() => updateStatus(apt.id, "cancelled")}
+                        >
+                          {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3 mr-1" />}
+                          Cancel
+                        </Button>
+                      )}
+
+                      {/* Admin actions */}
+                      {user?.role === "admin" && apt.status === "scheduled" && (
+                        <div className="flex gap-1.5 flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                            disabled={isLoading}
+                            onClick={() => updateStatus(apt.id, "visited")}
+                          >
+                            {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+                            Mark Visited
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                            disabled={isLoading}
+                            onClick={() => updateStatus(apt.id, "missed")}
+                          >
+                            {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <AlertTriangle className="h-3 w-3 mr-1" />}
+                            Missed
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 border-red-300 hover:bg-red-50"
+                            disabled={isLoading}
+                            onClick={() => updateStatus(apt.id, "cancelled")}
+                          >
+                            {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3 mr-1" />}
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         </CardContent>
       </Card>
     </motion.div>
   );
 };
+
+// Small helper to avoid importing cn from lib/utils separately inside JSX
+function cn(...classes: (string | false | null | undefined)[]) {
+  return classes.filter(Boolean).join(" ");
+}
 
 export default AppointmentsPage;
