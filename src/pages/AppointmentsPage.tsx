@@ -21,8 +21,10 @@ const timeSlots = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "14:00"
  */
 const getEffectiveStatus = (apt: Appointment): Appointment["status"] | "upcoming" => {
   if (apt.status !== "scheduled") return apt.status;
-  const aptDateTime = new Date(`${apt.date}T${apt.time}:00`);
-  return aptDateTime < new Date() ? "missed" : "upcoming";
+  const timeParts = apt.time.split(':');
+  const timeStr = timeParts.length === 2 ? `${apt.time}:00` : apt.time;
+  const aptDateTime = new Date(`${apt.date}T${timeStr}`);
+  return (isNaN(aptDateTime.getTime()) || aptDateTime < new Date()) ? "missed" : "upcoming";
 };
 
 const statusBadgeVariant = (s: string): "default" | "secondary" | "destructive" | "outline" => {

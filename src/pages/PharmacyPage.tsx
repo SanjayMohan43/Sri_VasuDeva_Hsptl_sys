@@ -87,27 +87,7 @@ const PharmacyPage = () => {
       return { name: med?.name || id, qty, price: med?.price || 0 };
     });
 
-    // 1. Create delivery order
-    const { error: orderError } = await supabase.from('delivery_orders').insert({
-      id: orderId,
-      patient_id: user?.id || "",
-      patient_name: user?.name || "",
-      medicines: itemsForDb,
-      address: "Home Address (Update in Delivery Page)",
-      distance: 2.5,
-      status: "processing",
-      estimated_time: "30 mins",
-      date: now.toISOString().split('T')[0]
-    });
-
-    if (orderError) {
-      setIsCheckingOut(false);
-      console.error("Checkout error:", orderError);
-      toast.error(`Checkout failed: ${orderError.message}`);
-      return;
-    }
-
-    // 2. Save bill/receipt to bills table
+    // Save in-store bill/receipt directly to bills table (not a delivery order)
     const { error: billError } = await supabase.from('bills').insert({
       id: billId,
       order_id: orderId,
@@ -124,7 +104,9 @@ const PharmacyPage = () => {
     setIsCheckingOut(false);
 
     if (billError) {
-      console.warn("Bill save failed (order still placed):", billError.message);
+      console.warn("Bill save failed:", billError.message);
+      toast.error(`Checkout failed: ${billError.message}`);
+      return;
     }
 
     // 3. Show receipt modal
@@ -506,8 +488,8 @@ const PharmacyPage = () => {
                 <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={handleDownloadPDF}>
                   <Download className="h-4 w-4" /> Save PDF
                 </Button>
-                <Button size="sm" className="flex-1 gap-1" onClick={() => { navigate("/delivery"); setReceipt(null); }}>
-                  Track Order
+                <Button size="sm" className="flex-1 gap-1" onClick={() => { navigate("/bills"); setReceipt(null); }}>
+                  View All Bills
                 </Button>
                 <Button variant="ghost" size="sm" className="px-2" onClick={() => setReceipt(null)}>
                   <X className="h-4 w-4" />

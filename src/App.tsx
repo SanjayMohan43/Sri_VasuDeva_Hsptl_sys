@@ -22,6 +22,7 @@ import ManagePatientsPage from "@/pages/ManagePatientsPage";
 import SchedulePage from "@/pages/SchedulePage";
 import BillsPage from "@/pages/BillsPage";
 import NotFound from "@/pages/NotFound";
+import AIChatbot from "@/components/AIChatbot";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => (
           <HospitalProvider>
             <NotificationProvider>
               <AppRoutes />
+              <AIChatbot />
             </NotificationProvider>
           </HospitalProvider>
         </AuthProvider>

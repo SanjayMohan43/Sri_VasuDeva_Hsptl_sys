@@ -12,8 +12,10 @@ import { toast } from "sonner";
 
 const getEffectiveStatus = (apt: Appointment): string => {
   if (apt.status !== "scheduled") return apt.status;
-  const aptDateTime = new Date(`${apt.date}T${apt.time}:00`);
-  return aptDateTime < new Date() ? "missed" : "upcoming";
+  const timeParts = apt.time.split(':');
+  const timeStr = timeParts.length === 2 ? `${apt.time}:00` : apt.time;
+  const aptDateTime = new Date(`${apt.date}T${timeStr}`);
+  return (isNaN(aptDateTime.getTime()) || aptDateTime < new Date()) ? "missed" : "upcoming";
 };
 
 const statusBadgeClass = (s: string) => {
