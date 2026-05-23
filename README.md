@@ -1,73 +1,101 @@
-# Welcome to my AI project
+# CareConnect – Smart Hospital Management System
 
-## Project info
+## Overview
+CareConnect is a smart hospital management system designed to simplify hospital operations and improve patient experience through digital healthcare services. The platform integrates appointment booking, queue management, telemedicine, pharmacy inventory, and medicine delivery into one centralized system.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+The system helps patients book appointments online, check doctor availability, receive notifications, and manage consultations efficiently. It also includes an advanced pharmacy module that allows users to check medicine availability and request home delivery within a 5 km radius.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+# Features
 
-**Use Lovable**
+## Appointment Management
+- Online doctor appointment booking
+- Real-time doctor availability
+- Queue number generation
+- Appointment reminders via SMS/Email
+- Appointment history tracking
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Doctor Management
+- Doctor schedule management
+- Slot creation and cancellation
+- Patient consultation handling
+- Upload medical reports
+- Telemedicine support
 
-Changes made via Lovable will be committed automatically to this repo.
+## Queue Management
+- Real-time queue tracking
+- Reduced patient waiting time
+- Automated queue updates
 
-**Use your preferred IDE**
+## Telemedicine
+- Online consultation support
+- Virtual meeting integration
+- Remote healthcare accessibility
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Pharmacy Management
+- Medicine inventory management
+- Medicine availability checking
+- Stock quantity updates
+- Medicine request handling
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Medicine Delivery System
+- Free home delivery within 5 km radius
+- Estimated delivery within 30 minutes
+- Delivery unavailable outside 5 km
+- Store open/closed control by admin
 
-Follow these steps:
+## Medicine Request System
+If medicines are unavailable:
+- Patients can request medicines
+- Advance payment option available
+- Notification when medicine arrives
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Admin Dashboard
+Admin can manage:
+- Doctors
+- Patients
+- Appointments
+- Pharmacy inventory
+- Delivery settings
+- Store status
+- Medicine requests
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Patient Dashboard
+Patients can:
+- Book appointments
+- View queue status
+- Attend telemedicine sessions
+- Check medicine availability
+- Request unavailable medicines
+- Track medicine delivery
 
-# Step 3: Install the necessary dependencies.
-npm i
+---
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+# Technology Stack
+- Frontend: HTML, CSS, JavaScript
+- Backend: Add your backend technology
+- Database: Add your database
+- Hosting: GitHub Pages / Other Hosting Platform
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+# Project Workflow
 
-**Use GitHub Codespaces**
+1. User Login/Register  
+2. Doctor Schedule Management  
+3. Appointment Booking  
+4. Queue Number Generation  
+5. Notifications Sent  
+6. Consultation / Telemedicine  
+7. Report Generation  
+8. Medicine Availability Check  
+9. Delivery or Medicine Request  
+10. Admin Inventory Management  
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+---
 
-## What technologies are used for this project?
+# Installation
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```bash
+git clone https://github.com/your-username/careconnect.git
