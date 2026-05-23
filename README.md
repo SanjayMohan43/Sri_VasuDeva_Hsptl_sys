@@ -74,9 +74,9 @@ Patients can:
 
 # Technology Stack
 - Frontend: HTML, CSS, JavaScript
-- Backend: Add your backend technology
-- Database: Add your database
-- Hosting: GitHub Pages / Other Hosting Platform
+- Backend: backend technology
+- Database: Supabase
+- Hosting: Vercel
 
 ---
 
